@@ -6,7 +6,7 @@ esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/
 
 esptool.py is Free Software under a GPLv2 license.
 
-[![Test esptool](https://github.com/espressif/esptool/workflows/Test%20esptool/badge.svg?branch=master)](https://github.com/espressif/esptool)
+[![Test esptool](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml)[![Build esptool](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml)
 
 ## Installation / dependencies
 
@@ -70,7 +70,7 @@ The baud rate is limited to 115200 when esptool.py establishes the initial conne
 
 Most hardware configurations will work with `-b 230400`, some with `-b 460800`, `-b 921600` and/or `-b 1500000` or higher.
 
-If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output [boot log](#boot-log) information.
+If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output [boot log](https://github.com/espressif/esptool/wiki/ESP8266-Boot-ROM-Log) information.
 
 ## Commands
 

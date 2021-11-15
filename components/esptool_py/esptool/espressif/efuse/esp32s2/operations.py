@@ -17,6 +17,8 @@
 from __future__ import division, print_function
 
 import argparse
+import io
+import os  # noqa: F401. It is used in IDF scripts
 
 import espsecure
 
@@ -24,8 +26,8 @@ import esptool
 
 from . import fields
 from .. import util
-from ..base_operations import (add_common_commands, add_force_write_always, burn_bit, burn_block_data, burn_efuse, dump,  # noqa: F401
-                               read_protect_efuse, summary, write_protect_efuse)  # noqa: F401
+from ..base_operations import (add_common_commands, add_force_write_always, burn_bit, burn_block_data,  # noqa: F401
+                               burn_efuse, check_error, dump, read_protect_efuse, summary, write_protect_efuse)  # noqa: F401
 
 
 def protect_options(p):
@@ -70,20 +72,24 @@ def add_commands(subparsers, efuses):
                               'This means GPIO45 can be high or low at reset without changing the flash voltage.')
     p.add_argument('voltage', help='Voltage selection', choices=['1.8V', '3.3V', 'OFF'])
 
-    p = subparsers.add_parser('burn_custom_mac', help='Not supported! Burn a 48-bit Custom MAC Address to EFUSE is.')
+    p = subparsers.add_parser('burn_custom_mac', help='Burn a 48-bit Custom MAC Address to EFUSE BLOCK3.')
     p.add_argument('mac', help='Custom MAC Address to burn given in hexadecimal format with bytes separated by colons'
-                   ' (e.g. AA:CD:EF:01:02:03).', nargs="?")
+                   ' (e.g. AA:CD:EF:01:02:03).', type=fields.base_fields.CheckArgValue(efuses, "CUSTOM_MAC"))
     add_force_write_always(p)
 
-    p = subparsers.add_parser('get_custom_mac', help='Not supported! Prints the Custom MAC Address.')
+    p = subparsers.add_parser('get_custom_mac', help='Prints the Custom MAC Address.')
 
 
 def burn_custom_mac(esp, efuses, args):
-    raise esptool.FatalError("burn_custom_mac is not supported!")
+    efuses["CUSTOM_MAC"].save(args.mac)
+    if args.only_burn_at_end:
+        return
+    efuses.burn_all()
+    get_custom_mac(esp, efuses, args)
 
 
 def get_custom_mac(esp, efuses, args):
-    raise esptool.FatalError("get_custom_mac is not supported!")
+    print("Custom MAC Address: {}".format(efuses["CUSTOM_MAC"].get()))
 
 
 def set_flash_voltage(esp, efuses, args):
@@ -123,6 +129,9 @@ The following efuses are burned: VDD_SPI_FORCE, VDD_SPI_XPD, VDD_SPI_TIEH.
     if args.voltage == '3.3V':
         sdio_tieh.save(1)
     print("VDD_SPI setting complete.")
+
+    if args.only_burn_at_end:
+        return
     efuses.burn_all()
 
 
@@ -162,6 +171,65 @@ def adc_info(esp, efuses, args):
         print("BLOCK2_VERSION = {}".format(efuses["BLOCK2_VERSION"].get_meaning()))
 
 
+def key_block_is_unused(block, key_purpose_block):
+    if not block.is_readable() or not block.is_writeable():
+        return False
+
+    if key_purpose_block.get() != 'USER' or not key_purpose_block.is_writeable():
+        return False
+
+    if not block.get_bitstring().all(False):
+        return False
+
+    return True
+
+
+def get_next_key_block(efuses, current_key_block, block_name_list):
+    key_blocks = [b for b in efuses.blocks if b.key_purpose_name]
+    start = key_blocks.index(current_key_block)
+
+    # Sort key blocks so that we pick the next free block (and loop around if necessary)
+    key_blocks = key_blocks[start:] + key_blocks[0:start]
+
+    # Exclude any other blocks that will be be burned
+    key_blocks = [b for b in key_blocks if b.name not in block_name_list]
+
+    for block in key_blocks:
+        key_purpose_block = efuses[block.key_purpose_name]
+        if key_block_is_unused(block, key_purpose_block):
+            return block
+
+    return None
+
+
+def split_512_bit_key(efuses, block_name_list, datafile_list, keypurpose_list):
+    i = keypurpose_list.index('XTS_AES_256_KEY')
+    block_name = block_name_list[i]
+
+    block_num = efuses.get_index_block_by_name(block_name)
+    block = efuses.blocks[block_num]
+
+    data = datafile_list[i].read()
+    if len(data) != 64:
+        raise esptool.FatalError('Incorrect key file size %d, XTS_AES_256_KEY should be 64 bytes' % len(data))
+
+    key_block_2 = get_next_key_block(efuses, block, block_name_list)
+    if not key_block_2:
+        raise esptool.FatalError('XTS_AES_256_KEY requires two free keyblocks')
+
+    keypurpose_list.append('XTS_AES_256_KEY_1')
+    datafile_list.append(io.BytesIO(data[:32]))
+    block_name_list.append(block_name)
+
+    keypurpose_list.append('XTS_AES_256_KEY_2')
+    datafile_list.append(io.BytesIO(data[32:]))
+    block_name_list.append(key_block_2.name)
+
+    keypurpose_list.pop(i)
+    datafile_list.pop(i)
+    block_name_list.pop(i)
+
+
 def burn_key(esp, efuses, args, digest=None):
     if digest is None:
         datafile_list = args.keyfile[0:len([name for name in args.keyfile if name is not None]):]
@@ -170,6 +238,11 @@ def burn_key(esp, efuses, args, digest=None):
     efuses.force_write_always = args.force_write_always
     block_name_list = args.block[0:len([name for name in args.block if name is not None]):]
     keypurpose_list = args.keypurpose[0:len([name for name in args.keypurpose if name is not None]):]
+
+    if 'XTS_AES_256_KEY' in keypurpose_list:
+        # XTS_AES_256_KEY is not an actual HW key purpose, needs to be split into
+        # XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
+        split_512_bit_key(efuses, block_name_list, datafile_list, keypurpose_list)
 
     util.check_duplicate_name_in_list(block_name_list)
     if len(block_name_list) != len(datafile_list) or len(block_name_list) != len(keypurpose_list):
@@ -247,6 +320,8 @@ def burn_key(esp, efuses, args, digest=None):
     if args.no_read_protect:
         print("Keys will remain readable (due to --no-read-protect)")
 
+    if args.only_burn_at_end:
+        return
     efuses.burn_all()
     print("Successful")
 
@@ -269,3 +344,36 @@ def burn_key_digest(esp, efuses, args):
                                      (len(digest), num_bytes, num_bytes * 8))
         digest_list.append(digest)
     burn_key(esp, efuses, args, digest=digest_list)
+
+
+def espefuse(esp, efuses, args, command):
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest='operation')
+    add_commands(subparsers, efuses)
+    cmd_line_args = parser.parse_args(command.split())
+    # copy arguments from args to cmd_line_args
+    vars(cmd_line_args).update(vars(args))
+    if cmd_line_args.operation is None:
+        parser.print_help()
+        parser.exit(1)
+    operation_func = globals()[cmd_line_args.operation]
+    # each 'operation' is a module-level function of the same name
+    operation_func(esp, efuses, cmd_line_args)
+
+
+def execute_scripts(esp, efuses, args):
+    del args.operation
+    scripts = args.scripts
+    del args.scripts
+    args.only_burn_at_end = True
+
+    for file in scripts:
+        with open(file.name, 'r') as file:
+            exec(file.read())
+
+    if args.debug:
+        for block in efuses.blocks:
+            data = block.get_bitstring(from_read=False)
+            block.print_block(data, "regs_for_burn", args.debug)
+
+    efuses.burn_all()

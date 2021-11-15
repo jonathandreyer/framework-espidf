@@ -105,6 +105,11 @@ def add_common_commands(subparsers, efuses):
     summary_cmd.add_argument('--format', help='Select the summary format', choices=['summary', 'json'], default='summary')
     summary_cmd.add_argument('--file', help='File to save the efuse summary', type=argparse.FileType('w'), default=sys.stdout)
 
+    execute_scripts = subparsers.add_parser('execute_scripts', help='Executes scripts to burn at one time.')
+    execute_scripts.add_argument('scripts', help='The special format of python scripts.', nargs="+", type=argparse.FileType('r'))
+
+    subparsers.add_parser('check_error', help='Checks eFuse errors')
+
 
 def add_force_write_always(p):
     p.add_argument('--force-write-always', help="Write the efuse even if it looks like it's already been written, or is write protected. "
@@ -113,7 +118,7 @@ def add_force_write_always(p):
 
 def summary(esp, efuses, args):
     """ Print a human-readable summary of efuse contents """
-    ROW_FORMAT = "%-40s %-50s%s = %s %s %s"
+    ROW_FORMAT = "%-50s %-50s%s = %s %s %s"
     human_output = (args.format == 'summary')
     json_efuse = {}
     if args.file != sys.stdout:
@@ -149,7 +154,7 @@ def summary(esp, efuses, args):
                 if desc_len:
                     desc_len += 50
                     for i in range(50, desc_len, 50):
-                        print("%-40s %-50s" % ("", e.description[i:(50 + i)]), file=args.file)
+                        print("%-50s %-50s" % ("", e.description[i:(50 + i)]), file=args.file)
             if args.format == 'json':
                 json_efuse[e.name] = {
                     'name': e.name,
@@ -169,7 +174,7 @@ def summary(esp, efuses, args):
         print(efuses.summary(), file=args.file)
         warnings = efuses.get_coding_scheme_warnings()
         if warnings:
-            print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings, file=args.file)
+            print("WARNING: Coding scheme has encoding bit error warnings", file=args.file)
         if args.file != sys.stdout:
             args.file.close()
             print("Done")
@@ -227,7 +232,8 @@ def burn_efuse(esp, efuses, args):
     for efuse, new_value in zip(burn_efuses_list, new_value_list):
         print("\n    - '{}' ({}) {} -> {}".format(efuse.name, efuse.description, efuse.get_bitstring(), efuse.convert_to_bitstring(new_value)))
         efuse.save(new_value)
-
+    if args.only_burn_at_end:
+        return
     efuses.burn_all()
 
     print("Checking efuses...")
@@ -255,11 +261,27 @@ def read_protect_efuse(esp, efuses, args):
         if not efuse.is_readable():
             print("Efuse %s is already read protected" % efuse.name)
         else:
+            if esp.CHIP_NAME == "ESP32":
+                if efuse_name == 'BLOCK2' and not efuses['ABS_DONE_0'].get() and "revision 3" in esp.get_chip_description():
+                    if efuses['ABS_DONE_1'].get():
+                        raise esptool.FatalError("Secure Boot V2 is on (ABS_DONE_1 = True), BLOCK2 must be readable, stop this operation!")
+                    else:
+                        print("In case using Secure Boot V2, the BLOCK2 must be readable, please stop this operation!")
+            else:
+                for block in efuses.Blocks.BLOCKS:
+                    block = efuses.Blocks.get(block)
+                    if block.name == efuse_name and block.key_purpose is not None:
+                        if not efuses[block.key_purpose].need_rd_protect(efuses[block.key_purpose].get()):
+                            raise esptool.FatalError("%s must be readable, stop this operation!" % efuse_name)
+                        break
             # make full list of which efuses will be disabled (ie share a read disable bit)
             all_disabling = [e for e in efuses if e.read_disable_bit == efuse.read_disable_bit]
             names = ", ".join(e.name for e in all_disabling)
             print("Permanently read-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "", names))
             efuse.disable_read()
+
+    if args.only_burn_at_end:
+        return
     efuses.burn_all()
 
     print("Checking efuses...")
@@ -287,6 +309,9 @@ def write_protect_efuse(esp, efuses, args):
             names = ", ".join(e.name for e in all_disabling)
             print("Permanently write-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "", names))
             efuse.disable_write()
+
+    if args.only_burn_at_end:
+        return
     efuses.burn_all()
 
     print("Checking efuses...")
@@ -334,11 +359,15 @@ def burn_block_data(esp, efuses, args):
                                      (block.id, num_bytes, len(data), offset))
         print("[{:02}] {:20} size={:02} bytes, offset={:02} - > [{}].".format(block.id, block.name, len(data), offset, util.hexify(data, " ")))
         block.save(data)
+
+    if args.only_burn_at_end:
+        return
     efuses.burn_all()
     print("Successful")
 
 
 def burn_bit(esp, efuses, args):
+    efuses.force_write_always = args.force_write_always
     num_block = efuses.get_index_block_by_name(args.block)
     block = efuses.blocks[num_block]
     data_block = BitString(block.get_block_len() * 8)
@@ -352,5 +381,14 @@ def burn_bit(esp, efuses, args):
     print("BLOCK%-2d   :" % block.id, data_block)
     block.print_block(data_block, "regs_to_write", debug=True)
     block.save(data_block.bytes[::-1])
+
+    if args.only_burn_at_end:
+        return
     efuses.burn_all()
     print("Successful")
+
+
+def check_error(esp, efuses, args):
+    if efuses.get_coding_scheme_warnings():
+        raise esptool.FatalError("Error(s) were detected in eFuses")
+    print("No errors detected")

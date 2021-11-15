@@ -37,57 +37,87 @@
 #define REG_SET_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)|(mask)))
 #define REG_CLR_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)&(~(mask))))
 
-#define ESP32_OR_LATER (ESP32 || ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6)
-#define ESP32S2_OR_LATER (ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6)
-#define ESP32S3_OR_LATER (ESP32S3 || ESP32C3 || ESP32C6)
-#define ESP32C3_OR_LATER (ESP32C3 || ESP32C6)
+#define ESP32_OR_LATER (ESP32 || ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2)
+#define ESP32S2_OR_LATER (ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2)
+#define ESP32S3_OR_LATER (ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2)
+#define ESP32C3_OR_LATER (ESP32C3 || ESP32C6 || ESP32H2)
+#define ESP32C6_OR_LATER (ESP32C6 || ESP32H2)
+#define ESP32H2_OR_LATER (ESP32H2)
+
+/**********************************************************
+ * Per-SOC capabilities
+ */
+#ifdef ESP32S2
+#define WITH_USB_OTG 1
+#endif // ESP32S2
+
+#ifdef ESP32C3
+#define WITH_USB_JTAG_SERIAL 1
+#define IS_RISCV 1
+#endif // ESP32C3
+
+#ifdef ESP32S3
+#define WITH_USB_JTAG_SERIAL 1
+#define WITH_USB_OTG 1
+#endif // ESP32S3
 
 /**********************************************************
  * Per-SOC based peripheral register base addresses
  */
 #ifdef ESP8266
-#define UART_BASE_REG      0x60000000 /* UART0 */
-#define SPI_BASE_REG       0x60000200 /* SPI peripheral 0 */
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60000200 /* SPI peripheral 0 */
 #endif
 
 #ifdef ESP32
-#define UART_BASE_REG      0x3ff40000 /* UART0 */
-#define SPI_BASE_REG       0x3ff42000 /* SPI peripheral 1, used for SPI flash */
-#define SPI0_BASE_REG      0x3ff43000 /* SPI peripheral 0, inner state machine */
-#define GPIO_BASE_REG      0x3ff44000 /* GPIO */
+#define UART_BASE_REG       0x3ff40000 /* UART0 */
+#define SPI_BASE_REG        0x3ff42000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x3ff43000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x3ff44000 /* GPIO */
 #endif
 
 #ifdef ESP32S2
-#define UART_BASE_REG      0x60000000 /* UART0 */
-#define SPI_BASE_REG       0x3f402000 /* SPI peripheral 1, used for SPI flash */
-#define SPI0_BASE_REG      0x3f403000 /* SPI peripheral 0, inner state machine */
-#define GPIO_BASE_REG      0x3f404000
-#define USB_BASE_REG       0x60080000
-#define RTCCNTL_BASE_REG   0x3f408000
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x3f402000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x3f403000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x3f404000
+#define USB_BASE_REG        0x60080000
+#define RTCCNTL_BASE_REG    0x3f408000
 #endif
 
 #ifdef ESP32S3
-#define UART_BASE_REG      0x60000000 /* UART0 */
-#define SPI_BASE_REG       0x60002000 /* SPI peripheral 1, used for SPI flash */
-#define SPI0_BASE_REG      0x60003000 /* SPI peripheral 0, inner state machine */
-#define GPIO_BASE_REG      0x60004000 /* GPIO */
-#define RTCCNTL_BASE_REG   0x60008000 /* RTC Control */
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x60004000 /* GPIO */
+#define USB_BASE_REG        0x60080000
+#define RTCCNTL_BASE_REG    0x60008000 /* RTC Control */
+#define USB_DEVICE_BASE_REG 0x60038000
 #endif
 
 #ifdef ESP32C3
-#define UART_BASE_REG      0x60000000 /* UART0 */
-#define SPI_BASE_REG       0x60002000 /* SPI peripheral 1, used for SPI flash */
-#define SPI0_BASE_REG      0x60003000 /* SPI peripheral 0, inner state machine */
-#define GPIO_BASE_REG      0x60004000
-#define RTCCNTL_BASE_REG   0x60008000
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x60004000
+#define RTCCNTL_BASE_REG    0x60008000
+#define USB_DEVICE_BASE_REG 0x60043000
 #endif
 
 #ifdef ESP32C6
-#define UART_BASE_REG      0x60000000 /* UART0 */
-#define SPI_BASE_REG       0x60002000 /* SPI peripheral 1, used for SPI flash */
-#define SPI0_BASE_REG      0x60003000 /* SPI peripheral 0, inner state machine */
-#define GPIO_BASE_REG      0x60004000
-#define RTCCNTL_BASE_REG   0x60008000
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x60004000
+#define RTCCNTL_BASE_REG    0x60008000
+#endif
+
+#ifdef ESP32H2
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x60004000
+#define RTCCNTL_BASE_REG    0x60008000
 #endif
 
 /**********************************************************
@@ -192,9 +222,49 @@
  */
 
 #ifdef ESP32S2
+#define UART_USB_OTG  2
+
 #define ETS_USB_INTR_SOURCE  48
 #define ETS_USB_INUM  9  /* arbitrary level 1 level interrupt */
 #endif // ESP32S2
+
+#ifdef ESP32C3
+#define UART_USB_JTAG_SERIAL  3
+
+#define USB_DEVICE_INT_CLR_REG          (USB_DEVICE_BASE_REG + 0x014)
+#define USB_DEVICE_EP1_CONF_REG         (USB_DEVICE_BASE_REG + 0x004)
+#define USB_DEVICE_EP1_REG              (USB_DEVICE_BASE_REG + 0x000)
+#define USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_CLR  (1<<2)
+#define USB_DEVICE_SERIAL_OUT_EP_DATA_AVAIL     (1<<2)
+
+#define DR_REG_INTERRUPT_CORE0_BASE             0x600c2000
+#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_CORE0_BASE + 0x068) /* USB-JTAG-Serial */
+
+#define USB_DEVICE_INT_ENA_REG                  (USB_DEVICE_BASE_REG + 0x010)
+#define USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_ENA  (1<<2)
+
+#define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
+#endif
+
+#ifdef ESP32S3
+#define UART_USB_OTG  3
+#define UART_USB_JTAG_SERIAL  4
+
+#define USB_DEVICE_INT_CLR_REG          (USB_DEVICE_BASE_REG + 0x014)
+#define USB_DEVICE_EP1_CONF_REG         (USB_DEVICE_BASE_REG + 0x004)
+#define USB_DEVICE_EP1_REG              (USB_DEVICE_BASE_REG + 0x000)
+#define USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_CLR  (1<<2)
+#define USB_DEVICE_SERIAL_OUT_EP_DATA_AVAIL     (1<<2)
+
+#define DR_REG_INTERRUPT_CORE0_BASE             0x600c2000
+#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_CORE0_BASE + 0x098) /* DWC-OTG */
+#define INTERRUPT_CORE0_USB_DEVICE_INT_MAP_REG  (DR_REG_INTERRUPT_CORE0_BASE + 0x180) /* USB-JTAG-Serial */
+
+#define USB_DEVICE_INT_ENA_REG                  (USB_DEVICE_BASE_REG + 0x010)
+#define USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_ENA  (1<<2)
+
+#define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
+#endif
 
 #define USB_GAHBCFG_REG    (USB_BASE_REG + 0x8)
 #define USB_GLBLLNTRMSK    (1 << 0)
@@ -204,5 +274,24 @@
  * RTC_CNTL peripheral
  */
 
+#ifdef ESP32S2
 #define RTC_CNTL_OPTION1_REG          (RTCCNTL_BASE_REG + 0x0128)
+#endif
+
+#ifdef ESP32S3
+#define RTC_CNTL_OPTION1_REG          (RTCCNTL_BASE_REG + 0x012C)
+#endif
+
 #define RTC_CNTL_FORCE_DOWNLOAD_BOOT  (1 << 0)
+
+/**********************************************************
+ * Per-SOC security info buffer size
+ */
+
+#ifdef ESP32S2
+#define SECURITY_INFO_BYTES 12 /* doesn't include chip_id and api_version */
+#endif // ESP32S2
+
+#if ESP32S3_OR_LATER
+#define SECURITY_INFO_BYTES 20
+#endif // ESP32S3_OR_LATER

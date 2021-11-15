@@ -1,3 +1,6 @@
+| Supported Targets | ESP32 | ESP32-S2 | ESP32-C3 |
+| ----------------- | ----- | -------- | -------- |
+
 # Wi-Fi Provisioning Manager Example
 
 (See the README.md file in the upper level 'examples' directory for more information about examples.)
@@ -19,6 +22,8 @@ Right after provisioning is complete, BLE is turned off and disabled to free the
 * `bt` : ESP32 BLE stack for transport of protobuf packets
 
 This example can be used, as it is, for adding a provisioning service to any application intended for IoT.
+
+> Note: If you use this example code in your own project, in BLE mode, then remember to enable the BT stack and BTDM BLE control settings in your SDK configuration (e.g. by using the `sdkconfig.defaults` file from this project).
 
 ## How to use example
 

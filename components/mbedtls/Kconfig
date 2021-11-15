@@ -231,13 +231,13 @@ menu "mbedTLS"
     config MBEDTLS_CMAC_C
         bool "Enable CMAC mode for block ciphers"
         default n
+        depends on MBEDTLS_AES_C || MBEDTLS_DES_C
         help
             Enable the CMAC (Cipher-based Message Authentication Code) mode for
             block ciphers.
 
     config MBEDTLS_HARDWARE_AES
         bool "Enable hardware AES acceleration"
-        default n if IDF_TARGET_ESP32S3
         default y
         depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST
         help
@@ -248,7 +248,7 @@ menu "mbedTLS"
 
     config MBEDTLS_AES_USE_INTERRUPT
         bool "Use interrupt for long AES operations"
-        depends on IDF_TARGET_ESP32S2 && MBEDTLS_HARDWARE_AES
+        depends on !IDF_TARGET_ESP32 && MBEDTLS_HARDWARE_AES
         default y
         help
             Use an interrupt to coordinate long AES operations.
@@ -270,7 +270,6 @@ menu "mbedTLS"
 
     config MBEDTLS_HARDWARE_MPI
         bool "Enable hardware MPI (bignum) acceleration"
-        default n if IDF_TARGET_ESP32S3
         default y
         depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST
         help
@@ -283,7 +282,6 @@ menu "mbedTLS"
 
     config MBEDTLS_HARDWARE_SHA
         bool "Enable hardware SHA acceleration"
-        default n if IDF_TARGET_ESP32S3
         default y
         depends on !SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST
         help
@@ -539,6 +537,13 @@ menu "mbedTLS"
         bool "Support TLS 1.2 protocol"
         depends on MBEDTLS_TLS_ENABLED
         default y
+
+    config MBEDTLS_SSL_PROTO_GMTSSL1_1
+        bool "Support GM/T SSL 1.1 protocol"
+        depends on MBEDTLS_TLS_ENABLED
+        default n
+        help
+            Provisions for GM/T SSL 1.1 support
 
     config MBEDTLS_SSL_PROTO_DTLS
         bool "Support DTLS protocol (all versions)"
@@ -877,7 +882,7 @@ menu "mbedTLS"
     config MBEDTLS_LARGE_KEY_SOFTWARE_MPI
         bool "Fallback to software implementation for larger MPI values"
         depends on MBEDTLS_HARDWARE_MPI
-        default y if IDF_TARGET_ESP32C3  # HW max 3072 bits
+        default y if IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32H2  # HW max 3072 bits
         default n
         help
             Fallback to software implementation for RSA key lengths

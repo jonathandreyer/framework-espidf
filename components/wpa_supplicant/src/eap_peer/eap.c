@@ -35,7 +35,7 @@
 #include "eap_peer/eap_config.h"
 #include "eap_peer/eap.h"
 #include "eap_peer/eap_tls.h"
-#include "esp_supplicant/esp_wifi_driver.h"
+#include "esp_wifi_driver.h"
 #ifdef EAP_PEER_METHOD
 #include "eap_peer/eap_methods.h"
 #endif
@@ -481,6 +481,10 @@ int eap_peer_config_init(
 	} else {
 		/* set default config phase2 mode as MSCHAPV2 */
 		sm->config.phase2 = "auth=MSCHAPV2";
+	}
+
+	if (g_wpa_suiteb_certification) {
+		sm->config.flags = TLS_CONN_SUITEB;
 	}
 
 	return 0;

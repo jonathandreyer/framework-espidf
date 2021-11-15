@@ -304,17 +304,18 @@ dtls_mac(dtls_hmac_context_t *hmac_ctx,
 static size_t
 dtls_ccm_encrypt(aes128_ccm_t *ccm_ctx, const unsigned char *src, size_t srclen,
 		 unsigned char *buf, 
-		 unsigned char *nounce,
+		 const unsigned char *nonce,
 		 const unsigned char *aad, size_t la) {
   long int len;
   (void)src;
 
   assert(ccm_ctx);
 
-  len = dtls_ccm_encrypt_message(&ccm_ctx->ctx, 8 /* M */, 
-				 max(2, 15 - DTLS_CCM_NONCE_SIZE),
-				 nounce,
-				 buf, srclen, 
+  len = dtls_ccm_encrypt_message(&ccm_ctx->ctx,
+                                 ccm_ctx->tag_length /* M */,
+				 ccm_ctx->l /* L */,
+				 nonce,
+				 buf, srclen,
 				 aad, la);
   return len;
 }
@@ -322,17 +323,18 @@ dtls_ccm_encrypt(aes128_ccm_t *ccm_ctx, const unsigned char *src, size_t srclen,
 static size_t
 dtls_ccm_decrypt(aes128_ccm_t *ccm_ctx, const unsigned char *src,
 		 size_t srclen, unsigned char *buf,
-		 unsigned char *nounce,
+		 const unsigned char *nonce,
 		 const unsigned char *aad, size_t la) {
   long int len;
   (void)src;
 
   assert(ccm_ctx);
 
-  len = dtls_ccm_decrypt_message(&ccm_ctx->ctx, 8 /* M */, 
-				 max(2, 15 - DTLS_CCM_NONCE_SIZE),
-				 nounce,
-				 buf, srclen, 
+  len = dtls_ccm_decrypt_message(&ccm_ctx->ctx,
+                                 ccm_ctx->tag_length /* M */,
+				 ccm_ctx->l /* L */,
+				 nonce,
+				 buf, srclen,
 				 aad, la);
   return len;
 }
@@ -544,15 +546,58 @@ dtls_ecdsa_verify_sig(const unsigned char *pub_key_x,
 }
 #endif /* DTLS_ECC */
 
+int
+dtls_encrypt_params(const dtls_ccm_params_t *params,
+                    const unsigned char *src, size_t length,
+                    unsigned char *buf,
+                    const unsigned char *key, size_t keylen,
+                    const unsigned char *aad, size_t la) {
+  int ret;
+  struct dtls_cipher_context_t *ctx = dtls_cipher_context_get();
+  ctx->data.tag_length = params->tag_length;
+  ctx->data.l = params->l;
+
+  ret = rijndael_set_key_enc_only(&ctx->data.ctx, key, 8 * keylen);
+  if (ret < 0) {
+    /* cleanup everything in case the key has the wrong size */
+    dtls_warn("cannot set rijndael key\n");
+    goto error;
+  }
+
+  if (src != buf)
+    memmove(buf, src, length);
+  ret = dtls_ccm_encrypt(&ctx->data, src, length, buf, params->nonce, aad, la);
+
+error:
+  dtls_cipher_context_release();
+  return ret;
+}
+
 int 
 dtls_encrypt(const unsigned char *src, size_t length,
 	     unsigned char *buf,
-	     unsigned char *nounce,
-	     unsigned char *key, size_t keylen,
+	     const unsigned char *nonce,
+	     const unsigned char *key, size_t keylen,
 	     const unsigned char *aad, size_t la)
+{
+  /* For backwards-compatibility, dtls_encrypt_params is called with
+   * M=8 and L=3. */
+  const dtls_ccm_params_t params = { nonce, 8, 3 };
+
+  return dtls_encrypt_params(&params, src, length, buf, key, keylen, aad, la);
+}
+
+int
+dtls_decrypt_params(const dtls_ccm_params_t *params,
+                    const unsigned char *src, size_t length,
+                    unsigned char *buf,
+                    const unsigned char *key, size_t keylen,
+                    const unsigned char *aad, size_t la)
 {
   int ret;
   struct dtls_cipher_context_t *ctx = dtls_cipher_context_get();
+  ctx->data.tag_length = params->tag_length;
+  ctx->data.l = params->l;
 
   ret = rijndael_set_key_enc_only(&ctx->data.ctx, key, 8 * keylen);
   if (ret < 0) {
@@ -563,36 +608,23 @@ dtls_encrypt(const unsigned char *src, size_t length,
 
   if (src != buf)
     memmove(buf, src, length);
-  ret = dtls_ccm_encrypt(&ctx->data, src, length, buf, nounce, aad, la);
+  ret = dtls_ccm_decrypt(&ctx->data, src, length, buf, params->nonce, aad, la);
 
 error:
   dtls_cipher_context_release();
   return ret;
 }
 
-int 
+int
 dtls_decrypt(const unsigned char *src, size_t length,
 	     unsigned char *buf,
-	     unsigned char *nounce,
-	     unsigned char *key, size_t keylen,
+	     const unsigned char *nonce,
+	     const unsigned char *key, size_t keylen,
 	     const unsigned char *aad, size_t la)
 {
-  int ret;
-  struct dtls_cipher_context_t *ctx = dtls_cipher_context_get();
+  /* For backwards-compatibility, dtls_encrypt_params is called with
+   * M=8 and L=3. */
+  const dtls_ccm_params_t params = { nonce, 8, 3 };
 
-  ret = rijndael_set_key_enc_only(&ctx->data.ctx, key, 8 * keylen);
-  if (ret < 0) {
-    /* cleanup everything in case the key has the wrong size */
-    dtls_warn("cannot set rijndael key\n");
-    goto error;
-  }
-
-  if (src != buf)
-    memmove(buf, src, length);
-  ret = dtls_ccm_decrypt(&ctx->data, src, length, buf, nounce, aad, la);
-
-error:
-  dtls_cipher_context_release();
-  return ret;
+  return dtls_decrypt_params(&params, src, length, buf, key, keylen, aad, la);
 }
-

@@ -97,7 +97,7 @@ def test_recv_long_msg(dut, websocket, msg_len, repeats):
                             \nreceived: {}\nwith length {}'.format(send_msg, len(send_msg), recv_msg, len(recv_msg)))
 
 
-@ttfw_idf.idf_example_test(env_tag='Example_WIFI')
+@ttfw_idf.idf_example_test(env_tag='Example_WIFI_Protocols')
 def test_examples_protocol_websocket(env, extra_data):
     """
     steps:
@@ -107,7 +107,7 @@ def test_examples_protocol_websocket(env, extra_data):
     """
     dut1 = env.get_dut('websocket', 'examples/protocols/websocket', dut_class=ttfw_idf.ESP32DUT)
     # check and log bin size
-    binary_file = os.path.join(dut1.app.binary_path, 'websocket-example.bin')
+    binary_file = os.path.join(dut1.app.binary_path, 'websocket_example.bin')
     bin_size = os.path.getsize(binary_file)
     ttfw_idf.log_performance('websocket_bin_size', '{}KB'.format(bin_size // 1024))
 

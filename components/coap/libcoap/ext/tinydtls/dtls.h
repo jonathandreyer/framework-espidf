@@ -226,8 +226,6 @@ typedef struct dtls_context_t {
   void *app;			/**< application-specific data */
 
   dtls_handler_t *h;		/**< callback handlers */
-
-  unsigned char readbuf[DTLS_MAX_BUF];
 } dtls_context_t;
 
 /** 
@@ -266,9 +264,9 @@ int dtls_connect(dtls_context_t *ctx, const session_t *dst);
 
 /**
  * Establishes a DTLS channel with the specified remote peer.
- * This function returns @c 0 if that channel already exists, a value
- * greater than zero when a new ClientHello message was sent, and
- * a value less than zero on error.
+ * This function returns @c 0 if that channel already exists and a renegotiate
+ * was initiated, a value greater than zero when a new ClientHello message was
+ * sent, and a value less than zero on error.
  *
  * @param ctx    The DTLS context to use.
  * @param peer   The peer object that describes the session.
@@ -282,6 +280,15 @@ int dtls_connect_peer(dtls_context_t *ctx, dtls_peer_t *peer);
  */
 int dtls_close(dtls_context_t *ctx, const session_t *remote);
 
+/**
+ * Renegotiates a DTLS channel based on the specified session.
+ * This function returns a value greater than zero when a new ClientHello
+ * message was sent, and a value less than zero on error.
+ *
+ * @param ctx    The DTLS context to use.
+ * @param dst    The session object that describes the existing session.
+ * @return A value less than zero on error, greater otherwise.
+ */
 int dtls_renegotiate(dtls_context_t *ctx, const session_t *dst);
 
 /** 

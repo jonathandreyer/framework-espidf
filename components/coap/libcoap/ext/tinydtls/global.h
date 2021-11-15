@@ -50,7 +50,7 @@ typedef unsigned char uint48[6];
 #ifdef DTLS_ECC
 #define DTLS_MAX_BUF 200
 #else /* DTLS_ECC */
-#define DTLS_MAX_BUF 100
+#define DTLS_MAX_BUF 120
 #endif /* DTLS_ECC */
 #else /* WITH_CONTIKI */
 #define DTLS_MAX_BUF 1400
@@ -80,6 +80,7 @@ typedef enum {
 #define TLS_EXT_CLIENT_CERTIFICATE_TYPE	19 /* see RFC 7250 */
 #define TLS_EXT_SERVER_CERTIFICATE_TYPE	20 /* see RFC 7250 */
 #define TLS_EXT_ENCRYPT_THEN_MAC	22 /* see RFC 7366 */
+#define TLS_EXT_EXTENDED_MASTER_SECRET	23 /* see RFC 7627 */
 
 #define TLS_CERT_TYPE_RAW_PUBLIC_KEY	2 /* see RFC 7250 */
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#include "soc.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,6 +24,10 @@ extern "C" {
 #include "soc.h"
 
 #define DPORT_DATE_REG SYSTEM_DATE_REG
+
+#define TRACEMEM_MUX_BLK0_NUM                   19
+#define TRACEMEM_MUX_BLK1_NUM                   20
+#define TRACEMEM_BLK_NUM2ADDR(_n_)              (0x3FFB8000UL + 0x4000UL*((_n_)-4))
 
 #ifndef __ASSEMBLER__
 #include "dport_access.h"

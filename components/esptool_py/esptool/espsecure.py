@@ -67,21 +67,22 @@ def swap_word_order(source):
 
 
 def _load_hardware_key(keyfile):
-    """ Load a 256-bit key, similar to stored in efuse, from a file
+    """ Load a 256/512-bit key, similar to stored in efuse, from a file
 
     192-bit keys will be extended to 256-bit using the same algorithm used
     by hardware if 3/4 Coding Scheme is set.
     """
     key = keyfile.read()
-    if len(key) not in [24, 32]:
-        raise esptool.FatalError("Key file contains wrong length (%d bytes), 24 or 32 expected." % len(key))
+    if len(key) not in [24, 32, 64]:
+        raise esptool.FatalError("Key file contains wrong length (%d bytes), 24, 32 or 64 expected." % len(key))
     if len(key) == 24:
         key = key + key[8:16]
+        assert len(key) == 32
         print("Using 192-bit key (extended)")
-    else:
+    elif len(key) == 32:
         print("Using 256-bit key")
-
-    assert len(key) == 32
+    else:
+        print("Using 512-bit key")
     return key
 
 
@@ -469,7 +470,7 @@ def extract_public_key(args):
         args.public_keyfile.write(vk.to_string())
     elif args.version == "2":
         """ Load an RSA private key and extract the public key as raw binary data. """
-        sk = _load_sbv2_rsa_signing_key(args.keyfile)
+        sk = _load_sbv2_rsa_signing_key(args.keyfile.read())
         vk = sk.public_key().public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
@@ -943,10 +944,10 @@ def main(custom_commandline=None):
                    choices=[192, 256], default=256, type=int)
     p.add_argument('digest_file', help="File to write 32 byte digest into", type=OutFileType())
 
-    p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use 32 byte flash encryption key with random data.')
+    p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use flash encryption key with random data.')
     p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme requires 192 bit key.",
-                   choices=[192, 256], default=256, type=int)
-    p.add_argument('key_file', help="File to write 24 or 32 byte digest into", type=OutFileType())
+                   choices=[192, 256, 512], default=256, type=int)
+    p.add_argument('key_file', help="File to write 24, 32 or 64 byte key into", type=OutFileType())
 
     p = subparsers.add_parser('decrypt_flash_data', help='Decrypt some data read from encrypted flash (using known key)')
     p.add_argument('encrypted_file', help="File with encrypted flash contents", type=argparse.FileType('rb'))
