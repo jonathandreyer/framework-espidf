@@ -1760,9 +1760,18 @@ esp_err_t esp_bt_controller_deinit(void)
         esp_pm_lock_delete(s_light_sleep_pm_lock);
         s_light_sleep_pm_lock = NULL;
     }
-    esp_timer_stop(s_btdm_slp_tmr);
-    esp_timer_delete(s_btdm_slp_tmr);
-    s_btdm_slp_tmr = NULL;
+
+    if (s_pm_lock != NULL) {
+        esp_pm_lock_delete(s_pm_lock);
+        s_pm_lock = NULL;
+    }
+
+    if (s_btdm_slp_tmr != NULL) {
+        esp_timer_stop(s_btdm_slp_tmr);
+        esp_timer_delete(s_btdm_slp_tmr);
+        s_btdm_slp_tmr = NULL;
+    }
+
     s_pm_lock_acquired = false;
 #endif
     semphr_delete_wrapper(s_wakeup_req_sem);
@@ -1787,13 +1796,21 @@ esp_err_t esp_bt_controller_deinit(void)
     return ESP_OK;
 }
 
+static void bt_controller_shutdown(void* arg)
+{
+    esp_bt_controller_shutdown();
+}
+
 static void bt_shutdown(void)
 {
     if (btdm_controller_status != ESP_BT_CONTROLLER_STATUS_ENABLED) {
         return;
     }
-
-    esp_bt_controller_shutdown();
+#if !CONFIG_FREERTOS_UNICORE
+    esp_ipc_call_blocking(CONFIG_BTDM_CTRL_PINNED_TO_CORE, bt_controller_shutdown, NULL);
+#else
+    bt_controller_shutdown(NULL);
+#endif
     esp_phy_disable();
 
     return;

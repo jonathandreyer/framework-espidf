@@ -98,6 +98,7 @@ PLATFORM_MACOS = 'macos'
 PLATFORM_LINUX32 = 'linux-i686'
 PLATFORM_LINUX64 = 'linux-amd64'
 PLATFORM_LINUX_ARM32 = 'linux-armel'
+PLATFORM_LINUX_ARMHF = 'linux-armhf'
 PLATFORM_LINUX_ARM64 = 'linux-arm64'
 
 
@@ -132,6 +133,7 @@ PLATFORM_FROM_NAME = {
     PLATFORM_LINUX_ARM32: PLATFORM_LINUX_ARM32,
     'Linux-arm': PLATFORM_LINUX_ARM32,
     'Linux-armv7l': PLATFORM_LINUX_ARM32,
+    PLATFORM_LINUX_ARMHF: PLATFORM_LINUX_ARMHF,
     PLATFORM_LINUX_ARM64: PLATFORM_LINUX_ARM64,
     'Linux-arm64': PLATFORM_LINUX_ARM64,
     'Linux-aarch64': PLATFORM_LINUX_ARM64,
@@ -1521,6 +1523,10 @@ def action_install_python_env(args):  # type: ignore
 
         subprocess.check_call([sys.executable, '-m', 'virtualenv', '--seeder', 'pip', idf_python_env_path],
                               stdout=sys.stdout, stderr=sys.stderr)
+    env_copy = os.environ.copy()
+    if env_copy.get('PIP_USER')  == 'yes':
+        warn('Found PIP_USER="yes" in the environment. Disabling PIP_USER in this shell to install packages into a virtual environment.')
+        env_copy['PIP_USER'] = 'no'
     run_args = [virtualenv_python, '-m', 'pip', 'install', '--no-warn-script-location']
     requirements_txt = os.path.join(global_idf_path, 'requirements.txt')
     run_args += ['-r', requirements_txt]
@@ -1536,7 +1542,7 @@ def action_install_python_env(args):  # type: ignore
         run_args += ['--find-links', wheels_dir]
 
     info('Installing Python packages from {}'.format(requirements_txt))
-    subprocess.check_call(run_args, stdout=sys.stdout, stderr=sys.stderr)
+    subprocess.check_call(run_args, stdout=sys.stdout, stderr=sys.stderr, env=env_copy)
 
 
 def action_add_version(args):  # type: ignore
