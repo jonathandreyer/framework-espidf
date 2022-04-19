@@ -1,6 +1,6 @@
 {
   "name": "framework-espidf",
-  "version": "3.40400.0",
+  "version": "3.40400.220126",
   "description": "Espressif IoT Development Framework. Official development framework for ESP32 chip",
   "keywords": [
     "framework",
