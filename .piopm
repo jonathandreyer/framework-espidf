@@ -1,1 +1,1 @@
-{"type": "tool", "name": "framework-espidf", "version": "3.40402.0", "spec": {"owner": "espressif", "id": 8103, "name": "framework-espidf", "requirements": null, "url": null}}
+{"type": "tool", "name": "framework-espidf", "version": "3.40403.0", "spec": {"owner": "espressif", "id": 8103, "name": "framework-espidf", "requirements": null, "url": null}}
